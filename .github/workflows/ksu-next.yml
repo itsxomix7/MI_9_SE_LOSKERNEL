@@ -5,13 +5,13 @@ on:
 jobs:
   build:
     name: Build Kernel
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-20.04
 
     steps:
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential flex libssl-dev libncurses-dev zip zlib1g-dev python3
+        sudo apt-get install -y bc bison build-essential flex libssl-dev libncurses5-dev zip zlib1g-dev python2 libtinfo5
 
     - name: Checkout Kernel Source
       uses: actions/checkout@v4
