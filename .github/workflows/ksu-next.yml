@@ -1,0 +1,54 @@
+name: Build KernelSU-Next for Mi 9 SE (grus)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Kernel
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+      with:
+        repository: LineageOS/android_kernel_xiaomi_sdm710
+        ref: lineage-22.1
+        path: kernel
+
+    - name: Setup Toolchain (Proton Clang)
+      run: |
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git toolchain
+
+    - name: Inject KernelSU-Next
+      run: |
+        cd kernel
+        curl -ls https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh | bash -s next
+
+    - name: Compile Kernel
+      run: |
+        cd kernel
+        export PATH=$GITHUB_WORKSPACE/toolchain/bin:$PATH
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+        export CC=clang
+        
+        # Konfigurasi defconfig untuk arsitektur sdm710
+        make O=out vendor/sdm710-perf_defconfig
+        make O=out -j$(nproc)
+
+    - name: Package with AnyKernel3
+      run: |
+        git clone https://github.com/osm0sis/AnyKernel3.git
+        cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/ || cp kernel/out/arch/arm64/boot/Image AnyKernel3/
+        cd AnyKernel3
+        # Nonaktifkan device check agar bisa di-flash universal di base sdm710
+        sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh
+        zip -r9 KSU-Next-grus-A15.zip * -x .git README.md *placeholder
+
+    - name: Upload Flashable ZIP Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: KSU-Next-grus-A15
+        path: AnyKernel3/KSU-Next-grus-A15.zip
